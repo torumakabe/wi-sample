@@ -1,0 +1,50 @@
+name: wi-sample
+metadata:
+  template: wi-sample@1.0.0
+services:
+  sampleapi:
+    project: ./src/sampleapi
+    language: dotnet
+    host: aks
+    docker:
+      path: Dockerfile
+      context: .
+    k8s:
+      namespace: default
+      kustomize:
+        dir: ./k8s
+        edits:
+          - set image sampleapi-image=${SERVICE_SAMPLEAPI_IMAGE_NAME}
+        env:
+          AzureAd__TenantId: ${AZURE_TENANT_ID}
+          AzureAd__ClientId: ${API_CLIENT_ID}
+      
+  samplefe:
+    project: ./src/samplefe
+    language: dotnet
+    host: aks
+    docker:
+      path: Dockerfile
+      context: .
+    k8s:
+      namespace: default
+      kustomize:
+        dir: ./k8s
+        edits:
+          - set image samplefe-image=${SERVICE_SAMPLEFE_IMAGE_NAME}
+        env:
+          AZURE_TENANT_ID: ${AZURE_TENANT_ID}
+          FRONTEND_CLIENT_ID: ${FRONTEND_CLIENT_ID}
+          API_SCOPE: ${API_SCOPE}
+          SQL_SERVER: ${SQL_SERVER_FQDN}
+          SQL_DATABASE: ${SQL_DATABASE_NAME}
+
+infra:
+  provider: terraform
+  path: infra
+
+hooks:
+  postprovision:
+    shell: sh
+    run: bash ./scripts/emit-sql-user-setup.sh
+    continueOnError: true   # SQL 実行は手作業のため、ここでは失敗扱いにしない

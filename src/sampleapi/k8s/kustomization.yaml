@@ -1,0 +1,19 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: default
+resources:
+- deployment.yaml
+- service.yaml
+images:
+- name: sampleapi-image
+  newName: acrwisampledev.azurecr.io/wi-sample/sampleapi-dev
+  newTag: azd-deploy-1755592334
+generatorOptions:
+  disableNameSuffixHash: true
+configMapGenerator:
+- envs:
+  - .env
+  literals:
+  - AzureAd__Instance=https://login.microsoftonline.com/
+  - AzureAd__Roles__0=Forecast.Read
+  name: sampleapi-config

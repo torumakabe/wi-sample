@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: samplefe
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: samplefe
+  template:
+    metadata:
+      labels:
+        app: samplefe
+        azure.workload.identity/use: "true"
+      annotations:
+        checksum/config: "init"
+    spec:
+      serviceAccountName: workload-identity-sa
+      containers:
+      - name: samplefe
+        image: samplefe-image
+        envFrom:
+        - configMapRef:
+            name: samplefe-config
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        fsGroup: 65532

@@ -1,0 +1,30 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: default
+resources:
+- service-account.yaml
+- deployment.yaml
+images:
+- name: samplefe-image
+  newName: acrwisampledev.azurecr.io/wi-sample/samplefe-dev
+  newTag: azd-deploy-1755592370
+generatorOptions:
+  disableNameSuffixHash: true
+configMapGenerator:
+- envs:
+  - .env
+  literals:
+  - API_ENDPOINT=http://sampleapi/weatherforecast
+  - AZURE_AUTHORITY_HOST=https://login.microsoftonline.com
+  name: samplefe-config
+replacements:
+- source:
+    fieldPath: data.FRONTEND_CLIENT_ID
+    kind: ConfigMap
+    name: samplefe-config
+  targets:
+  - fieldPaths:
+    - metadata.annotations.[azure.workload.identity/client-id]
+    select:
+      kind: ServiceAccount
+      name: workload-identity-sa
