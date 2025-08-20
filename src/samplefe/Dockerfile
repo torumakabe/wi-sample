@@ -3,9 +3,10 @@ WORKDIR /app
 ADD . .
 RUN dotnet build samplefe.csproj && dotnet publish -c release
 
-FROM mcr.microsoft.com/dotnet/runtime:9.0
+FROM mcr.microsoft.com/dotnet/aspnet:9.0
 WORKDIR /app
 COPY --from=builder /app/bin/release/net9.0/publish/ .
 # Kubernetes runAsNonRoot requires USER to be numeric
 USER 65532:65532
-ENTRYPOINT ["dotnet", "samplefe.dll"]
+EXPOSE 8080
+ENTRYPOINT ["dotnet", "SampleFe.dll"]

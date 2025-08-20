@@ -1,95 +1,145 @@
 ﻿// <directives>
-using System;
-using System.Threading;
 using System.Net.Http.Headers;
-// using Microsoft.Identity.Client; // not needed here; avoid LogLevel ambiguity
 using Azure.Core;
-using Azure;
 using Azure.Identity;
-using Microsoft.Extensions.Logging;
-using LogLevel = Microsoft.Extensions.Logging.LogLevel;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.Data.SqlClient;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using SampleFe.Options;
+using SampleFe.Infrastructure;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 // <directives>
 
-namespace samplefe
+namespace SampleFe;
+
+public class Program
 {
-    public class Program
+    public static async Task Main(string[] args)
     {
-        static async Task Main(string[] args)
+        var builder = WebApplication.CreateBuilder(args);
+
+        // 設定: appsettings.json + 環境変数（__ 区切り）
+        builder.Configuration.AddJsonFile("appsettings.json", optional: true, reloadOnChange: false)
+                              .AddEnvironmentVariables();
+
+        // ログ: 統一（SimpleConsole, SingleLine, Timestamp）
+        builder.Logging.ClearProviders();
+        builder.Logging.AddSimpleConsole(options =>
         {
-            string API_ENDPOINT = Environment.GetEnvironmentVariable("API_ENDPOINT") ?? "http://sampleapi/weatherforecast";
-            string API_SCOPE = Environment.GetEnvironmentVariable("API_SCOPE") ?? "api://YOUR-API-APP-ID/.default";
-            string SQL_SERVER = Environment.GetEnvironmentVariable("SQL_SERVER") ?? "";
-            string SQL_DATABASE = Environment.GetEnvironmentVariable("SQL_DATABASE") ?? "master";
+            options.SingleLine = true;
+            options.TimestampFormat = "yyyy-MM-ddTHH:mm:ss.fffZ ";
+        });
 
-            using var loggerFactory = LoggerFactory.Create(builder =>
+        // DI 構成
+        builder.Services.Configure<ApiOptions>(builder.Configuration.GetSection("Api"));
+        builder.Services.Configure<SqlOptions>(builder.Configuration.GetSection("Sql"));
+        // 既存の平坦な環境変数からのフォールバック（後方互換）
+        builder.Services.PostConfigure<ApiOptions>(opt =>
+        {
+            opt.Endpoint ??= builder.Configuration["API_ENDPOINT"];
+            opt.Scope ??= builder.Configuration["API_SCOPE"];
+        });
+        builder.Services.PostConfigure<SqlOptions>(opt =>
+        {
+            opt.Server ??= builder.Configuration["SQL_SERVER"];
+            opt.Database ??= builder.Configuration["SQL_DATABASE"];
+        });
+        builder.Services.AddHttpClient("api");
+        builder.Services.AddSingleton<TokenCredential>(_ => new WorkloadIdentityCredential());
+        builder.Services.AddSingleton<ReadinessState>();
+        builder.Services.AddHealthChecks()
+                        .AddCheck<ReadinessHealthCheck>("ready", tags: new[] { "ready" });
+        builder.Services.AddHostedService<Worker>();
+
+        // HealthChecks + ポート設定
+        builder.WebHost.UseSetting(WebHostDefaults.ServerUrlsKey, "http://0.0.0.0:8080");
+
+        var app = builder.Build();
+        app.MapHealthChecks("/healthz");
+        app.MapHealthChecks("/readyz", new HealthCheckOptions
+        {
+            Predicate = r => r.Tags.Contains("ready")
+        });
+        await app.RunAsync();
+    }
+}
+
+internal sealed class Worker(
+    ILogger<Worker> logger,
+    Microsoft.Extensions.Options.IOptions<ApiOptions> apiOptions,
+    Microsoft.Extensions.Options.IOptions<SqlOptions> sqlOptions,
+    IHttpClientFactory httpClientFactory,
+    TokenCredential credential,
+    ReadinessState readiness
+) : BackgroundService
+{
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        var http = httpClientFactory.CreateClient("api");
+
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            logger.LogInformation("samplefe start: utc={UtcNow}, node={Node}", DateTime.UtcNow, Environment.MachineName);
+
+            // SQL 接続確認（任意設定時のみ）
+            var sqlServer = sqlOptions.Value.Server ?? string.Empty;
+            var sqlDatabase = sqlOptions.Value.Database ?? "master";
+            if (!string.IsNullOrEmpty(sqlServer))
             {
-                builder
-                    .SetMinimumLevel(LogLevel.Information)
-                    .AddSimpleConsole(options =>
-                    {
-                        options.SingleLine = true;
-                        options.TimestampFormat = "yyyy-MM-ddTHH:mm:ss.fffZ ";
-                    });
-            });
-            var logger = loggerFactory.CreateLogger("samplefe");
-
-            // Simplify: rely on Azure Workload Identity (AKS)
-            // Environment vars are injected by the WI webhook: AZURE_CLIENT_ID / AZURE_TENANT_ID / AZURE_FEDERATED_TOKEN_FILE
-            TokenCredential cred = new WorkloadIdentityCredential();
-            var httpClient = new HttpClient();
-
-            while (true)
-            {
-                logger.LogInformation("samplefe start: utc={UtcNow}, node={Node}", DateTime.UtcNow, Environment.MachineName);
-                
-                // Test SQL Database connection if configured
-                if (!string.IsNullOrEmpty(SQL_SERVER))
+                try
                 {
-                    try
-                    {
-                        var sqlToken = await cred.GetTokenAsync(
-                            new TokenRequestContext(scopes: ["https://database.windows.net/.default"]),
-                            CancellationToken.None);
-                        logger.LogInformation("SQL target: server={Server}, database={Database}", SQL_SERVER, SQL_DATABASE);
+                    var sqlToken = await credential.GetTokenAsync(
+                        new TokenRequestContext(["https://database.windows.net/.default"]),
+                        stoppingToken);
 
-                        var connectionString = $"Server={SQL_SERVER}; Database={SQL_DATABASE}; Encrypt=True; TrustServerCertificate=False; Connection Timeout=30;";
+                    logger.LogInformation("SQL target: server={Server}, database={Database}", sqlServer, sqlDatabase);
 
-                        using (var connection = new SqlConnection(connectionString))
-                        {
-                            connection.AccessToken = sqlToken.Token;
-                            await connection.OpenAsync();
-                            
-                            var command = new SqlCommand("SELECT @@VERSION", connection);
-                            var version = await command.ExecuteScalarAsync();
-                            logger.LogInformation("SQL Database connected successfully. Version: {Version}", version?.ToString()?.Substring(0, 50) + "...");
-                        }
-                    }
-                    catch (Exception ex)
+                    var cs = $"Server={sqlServer}; Database={sqlDatabase}; Encrypt=True; TrustServerCertificate=False; Connection Timeout=30;";
+                    using var connection = new SqlConnection(cs)
                     {
-                        logger.LogError(ex, "Failed to connect to SQL Database");
-                    }
+                        AccessToken = sqlToken.Token
+                    };
+                    await connection.OpenAsync(stoppingToken);
+                    var command = new SqlCommand("SELECT @@VERSION", connection);
+                    var version = await command.ExecuteScalarAsync(stoppingToken);
+                    logger.LogInformation("SQL Database connected successfully. Version: {Version}", version?.ToString()?.Substring(0, 50) + "...");
                 }
-                
-                // API call
-                var token = await cred.GetTokenAsync(
-                    new TokenRequestContext(scopes: [API_SCOPE]),
-                    CancellationToken.None);
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Failed to connect to SQL Database");
+                }
+            }
 
-                var request = new HttpRequestMessage(HttpMethod.Get, API_ENDPOINT);
+            // API 呼び出し
+            var apiScope = apiOptions.Value.Scope ?? "api://YOUR-API-APP-ID/.default";
+            var apiEndpoint = apiOptions.Value.Endpoint ?? "http://sampleapi/weatherforecast";
+
+            try
+            {
+                var token = await credential.GetTokenAsync(new TokenRequestContext([apiScope]), stoppingToken);
+
+                using var request = new HttpRequestMessage(HttpMethod.Get, apiEndpoint);
                 request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token.Token);
 
-                using HttpResponseMessage response = await httpClient.SendAsync(request);
+                using var response = await http.SendAsync(request, stoppingToken);
                 response.EnsureSuccessStatusCode();
 
                 logger.LogInformation("API response status: {Status}", response.StatusCode);
-                var body = await response.Content.ReadAsStringAsync();
+                var body = await response.Content.ReadAsStringAsync(stoppingToken);
                 logger.LogInformation("API response body: {Body}", body);
                 logger.LogInformation("Entra ID token expires on: {ExpiresOn}", token.ExpiresOn);
-
-                // sleep and retry periodically
-                await Task.Delay(60000);
+                readiness.MarkReady();
             }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "API request failed");
+            }
+
+            await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
         }
     }
 }

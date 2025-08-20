@@ -78,6 +78,24 @@ cd ..
 azd deploy
 ```
 
+## ランタイム設定とヘルスチェック
+
+- 設定キーの統一（Kubernetes 環境変数は `__` 区切り）
+  - sampleapi: `AzureAd__Instance`, `AzureAd__TenantId`, `AzureAd__ClientId`, `AzureAd__Roles__0..`
+  - samplefe: `Api__Endpoint`, `Api__Scope`, `Sql__Server`, `Sql__Database`
+- ヘルスチェック
+  - sampleapi: `/healthz`（Service 経由、Pod 内部は 8080、Service は 80 → 8080）
+  - samplefe: `/healthz`（liveness）と `/readyz`（readiness: 初回 API 成功後に Ready）を公開（Pod 内部 8080）
+
+## 命名の統一
+
+- アセンブリ/名前空間
+  - sampleapi: `SampleApi`（AssemblyName/RootNamespace を設定）
+  - samplefe: `SampleFe`（AssemblyName/RootNamespace を設定）
+- Docker ENTRYPOINT
+  - sampleapi: `SampleApi.dll`
+  - samplefe: `SampleFe.dll`
+
 ## 動作確認
 
 ### AKS接続（azd 環境から取得）

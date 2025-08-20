@@ -7,14 +7,13 @@ resources:
 images:
 - name: samplefe-image
   newName: acrwisampledev.azurecr.io/wi-sample/samplefe-dev
-  newTag: azd-deploy-1755592370
+  newTag: azd-deploy-1755674563
 generatorOptions:
   disableNameSuffixHash: true
 configMapGenerator:
 - envs:
   - .env
   literals:
-  - API_ENDPOINT=http://sampleapi/weatherforecast
   - AZURE_AUTHORITY_HOST=https://login.microsoftonline.com
   name: samplefe-config
 replacements:

@@ -7,7 +7,7 @@ resources:
 images:
 - name: sampleapi-image
   newName: acrwisampledev.azurecr.io/wi-sample/sampleapi-dev
-  newTag: azd-deploy-1755592334
+  newTag: azd-deploy-1755674550
 generatorOptions:
   disableNameSuffixHash: true
 configMapGenerator:

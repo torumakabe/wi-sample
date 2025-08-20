@@ -5,8 +5,17 @@ using Microsoft.AspNetCore.Authorization.Infrastructure;
 using Microsoft.Identity.Web;
 // </ms_docref_import_types>
 
-// <ms_docref_add_msal>
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+// <ms_docref_add_msal>
+// Logging: 統一（SimpleConsole, SingleLine, Timestamp）
+builder.Logging.ClearProviders();
+builder.Logging.AddSimpleConsole(options =>
+{
+    options.SingleLine = true;
+    options.TimestampFormat = "yyyy-MM-ddTHH:mm:ss.fffZ ";
+});
+
+// AuthN/Z 設定
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddMicrosoftIdentityWebApi(builder.Configuration.GetSection("AzureAd"));
 var allowedRoles = builder.Configuration.GetSection("AzureAd:Roles").Get<string[]>() ?? Array.Empty<string>();
@@ -17,30 +26,23 @@ builder.Services.AddAuthorization(config =>
 });
 // </ms_docref_add_msal>
 
+// HealthChecks を有効化
+builder.Services.AddHealthChecks();
+
 // <ms_docref_enable_authz_capabilities>
 WebApplication app = builder.Build();
 app.UseAuthentication();
 app.UseAuthorization();
 // </ms_docref_enable_authz_capabilities>
 
+// Health エンドポイント（統一: /healthz, /readyz）
+app.MapHealthChecks("/healthz");
+app.MapHealthChecks("/readyz");
+
 var weatherSummaries = new[]
 {
     "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
 };
-
-// Public health endpoints (no auth)
-app.MapGet("/healthz", (ILoggerFactory lf) =>
-{
-    var logger = lf.CreateLogger("sampleapi");
-    logger.LogInformation("sampleapi healthz: status=ok");
-    return Results.Ok(new { status = "ok" });
-}).WithName("Healthz");
-app.MapGet("/readyz", (ILoggerFactory lf) =>
-{
-    var logger = lf.CreateLogger("sampleapi");
-    logger.LogInformation("sampleapi readyz: status=ready");
-    return Results.Ok(new { status = "ready" });
-}).WithName("Readyz");
 
 // <ms_docref_protect_endpoint>
 app.MapGet("/weatherforecast", [Authorize(Policy = "AuthZPolicy")] (HttpContext ctx, ILoggerFactory lf) =>
