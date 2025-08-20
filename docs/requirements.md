@@ -48,14 +48,14 @@ Azure Developer CLI (azd) を使用して、Azure Kubernetes Service (AKS) 環�
   - AzureAd__Instance（https://login.microsoftonline.com/）
   
   **samplefe用:**
-  - AZURE_TENANT_ID（Workload Identity用）
-  - AZURE_CLIENT_ID（フロントエンド用アプリケーションID）
-  - AZURE_FEDERATED_TOKEN_FILE（Workload Identityが自動設定）
-  - AZURE_AUTHORITY_HOST（https://login.microsoftonline.com）
-  - API_ENDPOINT（sampleapi ServiceのURL）
-  - API_SCOPE（api://{API_APP_ID}/.default）
-  - SQL_SERVER（例: sql-wi-sample-<env>.database.windows.net）
-  - SQL_DATABASE（例: sqldb-wi-sample-<env>）
+  - AzureAd__TenantId（Workload Identity・設定の統一）
+  - AzureAd__ClientId（フロントエンド用アプリケーションID）
+  - AzureAd__Instance（https://login.microsoftonline.com/、任意）
+  - Api__Endpoint（sampleapi ServiceのURL）
+  - Api__Scope（api://{API_APP_ID}/.default）
+  - Sql__Server（例: sql-wi-sample-<env>.database.windows.net）
+  - Sql__Database（例: sqldb-wi-sample-<env>）
+  - AZURE_AUTHORITY_HOST（https://login.microsoftonline.com、SDK互換のため任意）
 
 - **イベント駆動**: Terraformの出力値が生成されたとき、システムは自動的に環境変数として設定するものとする
 

@@ -210,13 +210,17 @@ sequenceDiagram
 ### sampleapi
 - `AzureAd__TenantId`: Azure AD テナント ID
 - `AzureAd__ClientId`: API のクライアント ID
+ - `AzureAd__Instance`: 認可エンドポイント（https://login.microsoftonline.com/）
 
 ### samplefe
-- `AZURE_TENANT_ID`: Azure AD テナント ID
-- `FRONTEND_CLIENT_ID`: フロントエンドのクライアント ID
-- `API_SCOPE`: API のスコープ
- - `SQL_SERVER`: SQL サーバー FQDN（Terraform 出力で自動設定）
- - `SQL_DATABASE`: SQL データベース名（Terraform 出力で自動設定）
+- `AzureAd__TenantId`: Azure AD テナント ID
+- `AzureAd__ClientId`: フロントエンドのクライアント ID（ServiceAccount 注釈へも連携）
+- `AzureAd__Instance`: 認可エンドポイント（https://login.microsoftonline.com/）
+- `Api__Scope`: API のスコープ（例: api://{API_APP_ID}/.default）
+- `Api__Endpoint`: API エンドポイント（例: http://sampleapi/weatherforecast）
+- `Sql__Server`: SQL サーバー FQDN（Terraform 出力で自動設定）
+- `Sql__Database`: SQL データベース名（Terraform 出力で自動設定）
+- `AZURE_AUTHORITY_HOST`（任意・SDK互換）: https://login.microsoftonline.com
 
 ## トラブルシューティング
 

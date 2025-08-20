@@ -4,16 +4,15 @@ namespace: default
 resources:
 - deployment.yaml
 - service.yaml
-images:
-- name: sampleapi-image
-  newName: acrwisampledev.azurecr.io/wi-sample/sampleapi-dev
-  newTag: azd-deploy-1755674550
 generatorOptions:
   disableNameSuffixHash: true
 configMapGenerator:
 - envs:
   - .env
   literals:
-  - AzureAd__Instance=https://login.microsoftonline.com/
   - AzureAd__Roles__0=Forecast.Read
   name: sampleapi-config
+images:
+- name: sampleapi-image
+  newName: acrwisampleenv.azurecr.io/wi-sample/sampleapi-env
+  newTag: azd-deploy-1755677205
