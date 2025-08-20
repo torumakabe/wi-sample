@@ -5,6 +5,8 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>57fa1f43-f7ed-4cd6-bfd1-ba5a0a6dd105</UserSecretsId>
+    <AssemblyName>SampleApi</AssemblyName>
+    <RootNamespace>SampleApi</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>

@@ -10,4 +10,4 @@ COPY --from=builder /app/bin/release/net9.0/publish/ .
 USER 65532:65532
 EXPOSE 8080
 ENV ASPNETCORE_URLS=http://+:8080
-ENTRYPOINT ["dotnet", "Api.dll"]
+ENTRYPOINT ["dotnet", "SampleApi.dll"]

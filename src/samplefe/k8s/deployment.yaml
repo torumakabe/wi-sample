@@ -20,6 +20,8 @@ spec:
       containers:
       - name: samplefe
         image: samplefe-image
+        ports:
+        - containerPort: 8080
         envFrom:
         - configMapRef:
             name: samplefe-config
@@ -30,6 +32,18 @@ spec:
           limits:
             memory: "256Mi"
             cpu: "200m"
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 10
       securityContext:
         runAsNonRoot: true
         runAsUser: 65532

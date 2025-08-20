@@ -378,3 +378,26 @@ graph LR
 3. **スケーリング**
    - HPA（Horizontal Pod Autoscaler）設定
    - クラスターオートスケーラー
+
+## 設定・ログ・ヘルスの統一
+
+### 設定（階層キー）
+
+- 方針: `appsettings.json` + 環境変数（`__` 区切り）で上書き。
+- `sampleapi`
+  - `AzureAd:Instance` / `AzureAd:TenantId` / `AzureAd:ClientId` / `AzureAd:Roles:0..`
+- `samplefe`
+  - `Api:Endpoint`（env: `Api__Endpoint`）
+  - `Api:Scope`（env: `Api__Scope`）
+  - `Sql:Server`（env: `Sql__Server`）
+  - `Sql:Database`（env: `Sql__Database`）
+
+### ログ（共通設定）
+
+- Console: `SimpleConsole`、`SingleLine=true`、`TimestampFormat="yyyy-MM-ddTHH:mm:ss.fffZ "`、最小レベル `Information`。
+
+### ヘルスチェック
+
+- 共通で HTTP `/healthz` を提供。
+  - `sampleapi`: ASP.NET Core HealthChecks を有効化（`MapHealthChecks("/healthz")`）。
+  - `samplefe`: Kestrel を起動し `/healthz` を公開（ポート `8080`）。
