@@ -16,6 +16,7 @@ services:
         edits:
           - set image sampleapi-image=${SERVICE_SAMPLEAPI_IMAGE_NAME}
         env:
+          AzureAd__Instance: https://login.microsoftonline.com/
           AzureAd__TenantId: ${AZURE_TENANT_ID}
           AzureAd__ClientId: ${API_CLIENT_ID}
       
@@ -33,11 +34,13 @@ services:
         edits:
           - set image samplefe-image=${SERVICE_SAMPLEFE_IMAGE_NAME}
         env:
-          AZURE_TENANT_ID: ${AZURE_TENANT_ID}
-          FRONTEND_CLIENT_ID: ${FRONTEND_CLIENT_ID}
-          API_SCOPE: ${API_SCOPE}
-          SQL_SERVER: ${SQL_SERVER_FQDN}
-          SQL_DATABASE: ${SQL_DATABASE_NAME}
+          AzureAd__Instance: https://login.microsoftonline.com/
+          AzureAd__TenantId: ${AZURE_TENANT_ID}
+          AzureAd__ClientId: ${FRONTEND_CLIENT_ID}
+          Api__Scope: ${API_SCOPE}
+          Api__Endpoint: http://sampleapi/weatherforecast
+          Sql__Server: ${SQL_SERVER_FQDN}
+          Sql__Database: ${SQL_DATABASE_NAME}
 
 infra:
   provider: terraform

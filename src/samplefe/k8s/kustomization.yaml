@@ -4,10 +4,6 @@ namespace: default
 resources:
 - service-account.yaml
 - deployment.yaml
-images:
-- name: samplefe-image
-  newName: acrwisampledev.azurecr.io/wi-sample/samplefe-dev
-  newTag: azd-deploy-1755674563
 generatorOptions:
   disableNameSuffixHash: true
 configMapGenerator:
@@ -18,7 +14,7 @@ configMapGenerator:
   name: samplefe-config
 replacements:
 - source:
-    fieldPath: data.FRONTEND_CLIENT_ID
+    fieldPath: data.AzureAd__ClientId
     kind: ConfigMap
     name: samplefe-config
   targets:
@@ -27,3 +23,7 @@ replacements:
     select:
       kind: ServiceAccount
       name: workload-identity-sa
+images:
+- name: samplefe-image
+  newName: acrwisampleenv.azurecr.io/wi-sample/samplefe-env
+  newTag: azd-deploy-1755677244
