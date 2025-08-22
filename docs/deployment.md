@@ -9,6 +9,8 @@
 - Docker
 - kubectl
 
+> **注意**: このプロジェクトではazd のkustomize機能を使用するため、初期設定時に機能を有効化する必要があります。
+
 ## デプロイ手順
 
 ### 1. 初期設定
@@ -23,6 +25,9 @@ az login
 
 # Azure Developer CLI初期化
 azd init
+
+# Azure Developer CLI のkustomize機能を有効化（AKS環境で必要）
+azd config set alpha.aks.kustomize on
 ```
 
 ### 2. Terraform変数設定（tfvars サンプルの利用）
@@ -121,6 +126,22 @@ kubectl logs -l app=samplefe -n default | rg "SQL Database connected successfull
 ```
 
 ### トラブルシューティング
+
+#### azd deploy でkustomize関連エラー
+
+azd がkustomize機能を使用できない場合、以下のエラーが発生することがあります：
+```
+ERROR: kustomize not supported
+```
+
+対処法：
+```bash
+# kustomize機能が有効化されているか確認
+azd config get alpha.aks.kustomize
+
+# 有効化されていない場合は設定
+azd config set alpha.aks.kustomize on
+```
 
 #### Pod起動失敗
 
