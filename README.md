@@ -12,10 +12,12 @@ Azure Kubernetes Service (AKS) 上で動作する Workload Identity を使用し
 ## 前提条件
 
 - [Azure Developer CLI (azd)](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd)
- - [Terraform](https://www.terraform.io/downloads) >= 1.12
+- [Terraform](https://www.terraform.io/downloads) >= 1.12
 - [Docker](https://docs.docker.com/get-docker/)
 - [kubectl](https://kubernetes.io/docs/tasks/tools/)
 - Azure サブスクリプション
+
+> **注意**: このプロジェクトではazd のkustomize機能を使用するため、初期設定時に機能を有効化する必要があります。
 
 ### 必要なロール/権限
 
@@ -44,6 +46,9 @@ cd wi-sample
 2. Azure Developer CLI で環境を初期化
 ```bash
 azd init
+
+# Azure Developer CLI のkustomize機能を有効化（AKS環境で必要）
+azd config set alpha.aks.kustomize on
 ```
 
 3. tfvars テンプレートを配置（任意・推奨）
@@ -223,6 +228,22 @@ sequenceDiagram
 - `AZURE_AUTHORITY_HOST`（任意・SDK互換）: https://login.microsoftonline.com
 
 ## トラブルシューティング
+
+### azd deploy でkustomize関連エラー
+
+azd がkustomize機能を使用できない場合、以下のエラーが発生することがあります：
+```
+ERROR: kustomize not supported
+```
+
+対処法：
+```bash
+# kustomize機能が有効化されているか確認
+azd config get alpha.aks.kustomize
+
+# 有効化されていない場合は設定
+azd config set alpha.aks.kustomize on
+```
 
 ### ポッドが起動しない場合
 ```bash
