@@ -38,8 +38,8 @@ output "API_CLIENT_ID" {
 }
 
 output "FRONTEND_CLIENT_ID" {
-  description = "Frontend Application Client ID"
-  value       = azuread_application.frontend.client_id
+  description = "Frontend Managed Identity Client ID"
+  value       = azurerm_user_assigned_identity.frontend.client_id
   sensitive   = true
 }
 
@@ -59,8 +59,8 @@ output "SQL_DATABASE_NAME" {
 }
 
 output "FRONTEND_SERVICE_PRINCIPAL_NAME" {
-  description = "Frontend Service Principal Display Name for SQL User"
-  value       = azuread_service_principal.frontend.display_name
+  description = "Frontend Managed Identity Name for SQL User"
+  value       = azurerm_user_assigned_identity.frontend.name
 }
 
 // Removed unnecessary SP object id output for simplicity

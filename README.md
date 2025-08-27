@@ -71,7 +71,11 @@ azd provision
 ```bash
 azd deploy
 ```
- - デプロイ完了後、`kubectl logs -l app=samplefe -n default` でフロントエンドアプリのログを見てください。たとえば `SQL Database connected successfully.` が出ていればSQL Databaseに接続できています。
+ - デプロイ完了後、以下でSQL接続とAPI応答を確認できます。
+   - SQL接続確認:
+     - `kubectl logs deploy/samplefe -n default --since=60m --tail=1000 | grep -F "SQL Database connected successfully"`
+   - API応答確認:
+     - `kubectl logs deploy/samplefe -n default --since=60m --tail=1000 | grep -E "API response status|API response body"`
 
 ## プロジェクト構造
 
@@ -136,9 +140,9 @@ graph TB
             SVC[sampleapi Service]
         end
         
-        subgraph "Entra ID"
+        subgraph "Entra ID / Managed Identity"
             APIAPP[API Application]
-            FEAPP[Frontend Application]
+            UAMI[Frontend User Assigned MI]
             FED[Federated Identity]
         end
     end
@@ -149,7 +153,7 @@ graph TB
     TF --> ACR
     TF --> AKS
     TF --> APIAPP
-    TF --> FEAPP
+    TF --> UAMI
     TF --> FED
     
     AZD -->|docker build/push| Docker
@@ -162,8 +166,8 @@ graph TB
     NS --> SVC
     
     FED -.->|trust| SA
-    FEAPP -.->|federated| FED
-    FE -->|Workload Identity| FEAPP
+    UAMI -.->|federated| FED
+    FE -->|Workload Identity| UAMI
     FE -->|Bearer Token| SVC
     SVC --> API
     API -.->|validate JWT| APIAPP
@@ -189,7 +193,9 @@ sequenceDiagram
     
     Dev->>AZD: azd provision
     AZD->>TF: terraform init / apply
-    TF->>AAD: Entra IDアプリ作成（API/Frontend + Federated Credential）
+    TF->>AAD: Entra IDアプリ作成（API）
+    TF->>AZR: ユーザー割り当てMI作成（Frontend）
+    TF->>AZR: Federated CredentialをUAMIに付与
     TF->>ACR: ACR作成
     TF->>AKS: AKSクラスター作成（Workload Identity有効化）
     TF-->>AZD: 出力値（clientIds, fqdn, db名 等）
@@ -219,7 +225,7 @@ sequenceDiagram
 
 ### samplefe
 - `AzureAd__TenantId`: Azure AD テナント ID
-- `AzureAd__ClientId`: フロントエンドのクライアント ID（ServiceAccount 注釈へも連携）
+- `AzureAd__ClientId`: フロントエンドのクライアント ID（UAMIのClient ID。ServiceAccount注釈へも連携）
 - `AzureAd__Instance`: 認可エンドポイント（https://login.microsoftonline.com/）
 - `Api__Scope`: API のスコープ（例: api://{API_APP_ID}/.default）
 - `Api__Endpoint`: API エンドポイント（例: http://sampleapi/weatherforecast）

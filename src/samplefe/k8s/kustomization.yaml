@@ -25,5 +25,5 @@ replacements:
       name: workload-identity-sa
 images:
 - name: samplefe-image
-  newName: acrwisampleenv.azurecr.io/wi-sample/samplefe-env
-  newTag: azd-deploy-1755677244
+  newName: acrwisampledev.azurecr.io/wi-sample/samplefe-dev
+  newTag: azd-deploy-1756283777

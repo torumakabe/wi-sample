@@ -15,8 +15,9 @@ Azure Developer CLI (azd) を使用して、Azure Kubernetes Service (AKS) 環�
 - **イベント駆動**: `azd provision` コマンドが実行されたとき、システムはTerraformを使用して以下のAzureリソースをプロビジョニングするものとする
   - Azure Kubernetes Service (AKS) クラスター
   - Azure Container Registry (ACR)
-  - Azure Entra ID アプリケーション登録（API用、フロントエンド用）
-- Workload Identity フェデレーション設定（フロントエンド用のみ）
+  - Azure Entra ID アプリケーション登録（API用）
+  - ユーザー割り当てマネージドID（フロントエンド用）
+  - Workload Identity フェデレーション設定（フロントエンドUAMIに付与）
   - リソースグループ
   - 仮想ネットワーク（必要に応じて）
   - Azure SQL Database（SQL Server + Database、Entra ID 管理者設定、Azure サービス許可ルール 0.0.0.0）
@@ -49,7 +50,7 @@ Azure Developer CLI (azd) を使用して、Azure Kubernetes Service (AKS) 環�
   
   **samplefe用:**
   - AzureAd__TenantId（Workload Identity・設定の統一）
-  - AzureAd__ClientId（フロントエンド用アプリケーションID）
+  - AzureAd__ClientId（フロントエンド用UAMIのClient ID）
   - AzureAd__Instance（https://login.microsoftonline.com/、任意）
   - Api__Endpoint（sampleapi ServiceのURL）
   - Api__Scope（api://{API_APP_ID}/.default）
@@ -143,6 +144,26 @@ graph TD
 6. samplefeが `https://database.windows.net/.default` のトークンで Azure SQL Database に接続できる（DB に外部ユーザーが作成済み）
 7. 環境変数の変更のみで異なる環境にデプロイできる
 8. `terraform plan` で差分が正しく検出される
+
+## UAMIの前提条件と制約
+
+以下の条件をすべて満たす場合に限り、フロントエンド（`samplefe`）はユーザー割り当てマネージドID（UAMI）で動作します。
+
+- 同一テナント: UAMIとアクセス先（APIのアプリ登録、Azure SQL）は同一のEntra IDテナント内に存在すること（クロステナントは不可）。
+- AKS設定: AKSで`oidc_issuer_enabled=true`かつ`workload_identity_enabled=true`であること。ServiceAccountの`subject`がフェデレーション資格情報（FIC）の`subject`と一致していること。
+- Pod注入: 対象Podに`azure.workload.identity/use: "true"`が付与され、`azure.workload.identity/client-id`にUAMIの`clientId`が設定されること（本プロジェクトはkustomizeで注入）。
+- 権限付与: UAMIのサービスプリンシパルにAPIアプリのロール（`Forecast.Read`）が割り当てられていること。Azure SQL側でUAMIの外部ユーザーが作成され、最小権限が付与されていること。
+- トークン種別: 要求されるトークンがアプリケーション権限（`roles`クレーム）で事足りること（ユーザー委任`scp`は付与されない）。
+- SDK対応: `Azure.Identity` 1.11以上で`WorkloadIdentityCredential`を使用できること（本リポは1.12.0）。
+
+次のいずれかに該当する場合、UAMIではなくフロントエンド側の「アプリケーション登録（アプリ/SP）」が必要です。
+
+- クロステナント: アクセス先が別テナントに存在する（UAMIは基本的にクロステナント非対応）。
+- エンドユーザー認証が必要: ブラウザSPAやユーザーサインイン/同意（PKCE等）が必要なシナリオ。
+- 委任許可が必須: API側がユーザーコンテキスト（`scp`）必須の設計になっている。
+- UAMI非対応サービス: 対象サービス/サードパーティAPIがUAMI（Managed Identity）を受け付けない。
+
+上記に該当する場合は、フロントエンド用のアプリ登録＋フェデレーション（Workload Identity）構成に切り替えてください。
 
 ## エッジケース
 
