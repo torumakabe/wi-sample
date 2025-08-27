@@ -42,17 +42,17 @@ cp main.tfvars.sample.json main.tfvars.json
 # - 既存名を固定したい場合: resource_group_name, aks_cluster_name, acr_name
 ```
 
-### 3. インフラストラクチャのプロビジョニング
+### 3. インフラストラクチャのプロビジョニング（azd 推奨）
 
 ```bash
-# Terraformでインフラを作成（手動手順の例）
-terraform init
-terraform plan
-terraform apply
+# Azure Developer CLIでインフラを作成
+azd provision
 
-# 出力値を確認（AZURE_* / UPPER_SNAKE_CASE を使用）
-terraform output -json > ../outputs.json
+# 出力値の確認（環境に反映済みの値を表示）
+azd env get-values
 ```
+
+> 補足: 本プロジェクトは azd がTerraformを内部実行します。直接 `terraform` コマンドを実行する必要はありません。
 
 ### 4. 環境変数の設定（azd 推奨）
 
@@ -114,15 +114,20 @@ az aks get-credentials --resource-group "$RG" --name "$AKS"
 # Podの状態確認
 kubectl get pods -n default
 
-# ログ確認
-kubectl logs -l app=samplefe -n default
-kubectl logs -l app=sampleapi -n default
+# ログ確認（SQL接続とAPI応答を直接確認）
+# samplefe の直近ログからSQL接続成功とAPI応答を抽出
+kubectl logs deploy/samplefe -n default --since=60m --tail=1000 | grep -F "SQL Database connected successfully"
+kubectl logs deploy/samplefe -n default --since=60m --tail=1000 | grep -E "API response status|API response body"
+
+# 必要に応じて追尾表示や過去ログも確認
+# kubectl logs deploy/samplefe -n default -f --since=30m --tail=1000
+# kubectl logs deploy/samplefe -n default --previous --tail=1000
 ```
 
-### Azure SQL 接続の確認
+### Azure SQL 接続の確認（抜粋）
 
 ```bash
-kubectl logs -l app=samplefe -n default | rg "SQL Database connected successfully"
+kubectl logs deploy/samplefe -n default --since=60m --tail=1000 | grep -F "SQL Database connected successfully"
 ```
 
 ### トラブルシューティング
@@ -160,9 +165,12 @@ kubectl get events -n default --sort-by='.lastTimestamp'
 kubectl get sa workload-identity-sa -n default -o yaml
 ```
 
-2. フェデレーション設定確認：
+2. フェデレーション設定確認（UAMI）：
 ```bash
-az ad app federated-credential list --id <frontend-app-object-id>
+# azd 環境からRGを取得し、UAMI名は uami-wi-sample-<env>（デフォルト命名）
+RG=$(azd env get-values | awk -F= '/^AZURE_RESOURCE_GROUP=/{print $2}')
+UAMI="uami-wi-sample-$(azd env get-values | awk -F= '/^AZURE_ENV_NAME=/{print $2}')"
+az identity federated-credential list --name "$UAMI" --resource-group "$RG"
 ```
 
 3. Azure SQL ログイン失敗（Error 18456）
@@ -174,10 +182,6 @@ az ad app federated-credential list --id <frontend-app-object-id>
 ## クリーンアップ
 
 ```bash
-# リソースの削除
-cd infra
-terraform destroy
-
-# Azure Developer CLI環境削除
+# Azure Developer CLI環境削除（Terraform destroyは azd が内部で実行）
 azd down
 ```

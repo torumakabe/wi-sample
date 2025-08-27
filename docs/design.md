@@ -24,9 +24,9 @@ graph TB
             SVC[sampleapi Service]
         end
         
-        subgraph "Entra ID"
+        subgraph "Entra ID / Managed Identity"
             APIAPP[API Application]
-            FEAPP[Frontend Application]
+            UAMI[Frontend User Assigned MI]
             FED[Federated Identity]
         end
     end
@@ -37,7 +37,7 @@ graph TB
     TF --> ACR
     TF --> AKS
     TF --> APIAPP
-    TF --> FEAPP
+    TF --> UAMI
     TF --> FED
     
     AZD -->|docker build/push| Docker
@@ -50,8 +50,8 @@ graph TB
     NS --> SVC
     
     FED -.->|trust| SA
-    FEAPP -.->|federated| FED
-    FE -->|Workload Identity| FEAPP
+    UAMI -.->|federated| FED
+    FE -->|Workload Identity| UAMI
     FE -->|Bearer Token| SVC
     SVC --> API
     API -.->|validate JWT| APIAPP
@@ -62,7 +62,7 @@ graph TB
 
 - **AKS**: アプリ実行基盤（`sampleapi`/`samplefe` Pod、ServiceAccount）
 - **ACR**: コンテナイメージの保存
-- **Entra ID**: アプリ登録（API/Frontend）、フェデレーション資格情報（Workload Identity）
+- **Entra ID / Managed Identity**: アプリ登録（API）、ユーザー割り当てマネージドID（Frontend）＋フェデレーション資格情報（Workload Identity）
 - **Azure SQL Database**: `samplefe` からアクセストークンで接続（DB に EXTERNAL USER 作成前提）
 - **azd + Terraform**: IaC/デプロイ管理（hooks で貼り付け用 SQL を生成）
 
@@ -168,7 +168,7 @@ AZURE_ENV_NAME=<環境名>
 AZURE_CONTAINER_REGISTRY_NAME=<ACR名>
 ```
 
-#### Terraform変数
+#### Terraform変数（抜粋）
 
 ```hcl
 # infra/variables.tf
@@ -183,15 +183,14 @@ variable "location" {
   default     = "Japan East"
 }
 
-variable "api_app_name" {
-  description = "API用Entra IDアプリケーション名"
+# API用Entra IDアプリケーション表示名（実体はコード側で参照）
+variable "api_app_display_name" {
+  description = "API用Entra IDアプリケーション表示名"
   type        = string
 }
 
-variable "frontend_app_name" {
-  description = "フロントエンド用Entra IDアプリケーション名"
-  type        = string
-}
+# フロントエンドはユーザー割り当てマネージドID（UAMI）を使用。
+# UAMI名は `uami-wi-sample-<environment_name>` で作成（変更したい場合はTerraformを編集）。
 ```
 
 #### Kubernetesマニフェスト

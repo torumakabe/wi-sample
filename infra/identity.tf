@@ -27,23 +27,17 @@ resource "azuread_service_principal" "api" {
   app_role_assignment_required = false
 }
 
-# フロントエンド用アプリケーション
-resource "azuread_application" "frontend" {
-  display_name = var.frontend_app_display_name
-
-  api {
-    requested_access_token_version = 2
-  }
+# フロントエンド用 ユーザー割り当てマネージドID（UAMI）
+resource "azurerm_user_assigned_identity" "frontend" {
+  name                = "uami-wi-sample-${var.environment_name}"
+  resource_group_name = azurerm_resource_group.main.name
+  location            = azurerm_resource_group.main.location
+  tags                = local.tags
 }
 
-resource "azuread_service_principal" "frontend" {
-  client_id                    = azuread_application.frontend.client_id
-  app_role_assignment_required = false
-}
-
-# フロントエンドアプリがAPIのForecast.Readロールを持つように設定
-resource "azuread_app_role_assignment" "frontend_to_api" {
+# UAMI（Service Principal）にAPIのForecast.Readロールを割り当て
+resource "azuread_app_role_assignment" "uami_to_api" {
   app_role_id         = random_uuid.api_role_forecast_read.result
-  principal_object_id = azuread_service_principal.frontend.object_id
+  principal_object_id = azurerm_user_assigned_identity.frontend.principal_id
   resource_object_id  = azuread_service_principal.api.object_id
 }
