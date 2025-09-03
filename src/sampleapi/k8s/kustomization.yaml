@@ -15,4 +15,4 @@ configMapGenerator:
 images:
 - name: sampleapi-image
   newName: acrwisampledev.azurecr.io/wi-sample/sampleapi-dev
-  newTag: azd-deploy-1756283747
+  newTag: azd-deploy-1756881722

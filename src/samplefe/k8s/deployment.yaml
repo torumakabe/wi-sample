@@ -22,6 +22,9 @@ spec:
         image: samplefe-image
         ports:
         - containerPort: 8080
+        env:
+        - name: TokenValidation__EnableValidation
+          value: "true"
         envFrom:
         - configMapRef:
             name: samplefe-config

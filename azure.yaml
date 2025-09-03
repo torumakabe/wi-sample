@@ -19,7 +19,7 @@ services:
           AzureAd__Instance: https://login.microsoftonline.com/
           AzureAd__TenantId: ${AZURE_TENANT_ID}
           AzureAd__ClientId: ${API_CLIENT_ID}
-      
+
   samplefe:
     project: ./src/samplefe
     language: dotnet
@@ -39,6 +39,7 @@ services:
           AzureAd__ClientId: ${FRONTEND_CLIENT_ID}
           Api__Scope: ${API_SCOPE}
           Api__Endpoint: http://sampleapi/weatherforecast
+          TokenValidation__ApiClientId: ${API_CLIENT_ID}
           Sql__Server: ${SQL_SERVER_FQDN}
           Sql__Database: ${SQL_DATABASE_NAME}
 

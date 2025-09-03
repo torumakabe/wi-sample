@@ -26,4 +26,4 @@ replacements:
 images:
 - name: samplefe-image
   newName: acrwisampledev.azurecr.io/wi-sample/samplefe-dev
-  newTag: azd-deploy-1756283777
+  newTag: azd-deploy-1756881750
